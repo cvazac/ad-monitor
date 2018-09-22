@@ -80,7 +80,7 @@
             function() {
                 ;['slotRenderEnded', 'slotOnload'].forEach(function(eventName) {
                     googletag.pubads().addEventListener(eventName, function(e) {
-                        console.info('cav', e)
+//                        console.info('cav', e.slot.getSlotElementId(), eventName, e)
                         addAdEvent(e.slot.getSlotElementId(), eventName)
                     });
                 })
@@ -98,6 +98,25 @@
                                 container.addEventListener('mouseout', function() {
                                     hideAdTimers()
                                 })
+
+                                new MutationObserver( function(mutationsList, observer) {
+                                    for(var mutation of mutationsList) {
+                                        console.info('cav', opt_div, mutation);
+                                        var iframe = (mutation.addedNodes ? Array.prototype.slice.call(mutation.addedNodes) : []).find(function(n) {
+                                            return n.tagName.toLowerCase() === 'iframe'
+                                        })
+                                        if (iframe) {
+                                            addAdEvent(opt_div, 'iframe-inserted')
+                                            iframe.addEventListener('load', function() {
+                                                addAdEvent(opt_div, 'iframe-loaded')
+                                            })
+                                            observer.disconnect();
+                                        }
+                                    }
+                                }).observe(container, { attributes: true, childList: true, subtree: true })
+                                setTimeout(function() {
+                                    debugger;
+                                }, 10000)
                             }
                         }
                         return _.apply(this, arguments)
@@ -138,7 +157,6 @@ border: solid 1px black;
             end.setMilliseconds(0)
             end.setSeconds(end.getSeconds() + 1)
 
-            console.info('[start, end]', [start, end])
             return [start, end]
         }
 
