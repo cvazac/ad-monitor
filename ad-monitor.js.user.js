@@ -114,9 +114,6 @@
                                         }
                                     }
                                 }).observe(container, { attributes: true, childList: true, subtree: true })
-                                setTimeout(function() {
-                                    debugger;
-                                }, 10000)
                             }
                         }
                         return _.apply(this, arguments)
