@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         gpt-ads.js
+// @name         ad-monitor.js
 // @include      *
 // @run-at       document-start
 // @require      https://cvazac.netlify.com/gpt-ads/scripts/d3.js
@@ -11,22 +11,19 @@
 ;(function() {
     if (window !== top) return;
 
-    var chart, timers = {}, adTimers = {}, slotId
-    timers['navigationStart'] = 0
+    var chart, timers = {}, adTimers = {}, slotId, max = -1, timeOrigin = performance.timing.navigationStart
 
     initTimers()
     initGptListeners()
 
     function initTimers() {
-        var timers = {}
-        timers['navigationStart'] = 0
-
+        timers['navStart'] = 0
         window.addEventListener('DOMContentLoaded', function() {
             setTimeout(function(){
                 var entry = performance.getEntriesByType('navigation')[0]
 //                addTimer('domContentLoadedEventStart', entry.domContentLoadedEventStart)
 //                addTimer('domContentLoadedEventEnd', entry.domContentLoadedEventEnd)
-                addTimer('domContentLoaded', entry.domContentLoadedEventEnd)
+                addTimer('dCL', entry.domContentLoadedEventStart)
             })
         })
 
@@ -34,24 +31,26 @@
             list.getEntries().forEach(function(entry) {
                 const {name, entryType} = entry
                 if (entryType === 'navigation') {
-                    addTimer('loadEventStart', entry.loadEventStart)
-                    addTimer('loadEventEnd', entry.loadEventEnd)
+//                    addTimer('loadEventStart', entry.loadEventStart)
+//                    addTimer('loadEventEnd', entry.loadEventEnd)
+                    addTimer('load', entry.loadEventStart)
                 } else if (entryType === 'paint') {
-                    addTimer(name, entry.startTime)
+                    addTimer(name === 'first-paint' ? 'fp' : 'fcp', entry.startTime)
                 }
             })
         }).observe({entryTypes: ['paint', 'navigation']})
     }
     function addTimer(name, hr) {
         timers[name] = hr;
+        if (hr > max) max = hr
         showCurrentData()
     }
     function showCurrentData() {
         var data = Object.keys(timers).map(function(name) {
-            return {time: performance.timeOrigin + timers[name], name}
+            return {time: timeOrigin + timers[name], name}
         })
         Object.keys(adTimers[slotId] || {}).forEach(function(eventName) {
-            data.push({time: performance.timeOrigin + adTimers[slotId][eventName], name: eventName})
+            data.push({time: timeOrigin + adTimers[slotId][eventName], name: eventName})
         })
         data = data.sort(function (d1, d2) {
             return d1.time - d2.time
@@ -59,8 +58,10 @@
         setData(data)
     }
     function addAdEvent(slotId, eventName) {
+        var hr = performance.now()
+        if (hr > max) max = hr
         adTimers[slotId] = adTimers[slotId] || {}
-        adTimers[slotId][eventName] = performance.now()
+        adTimers[slotId][eventName] = hr
     }
     function showAdTimers() {
         slotId = arguments[0]
@@ -79,7 +80,7 @@
             function() {
                 ;['slotRenderEnded', 'slotOnload'].forEach(function(eventName) {
                     googletag.pubads().addEventListener(eventName, function(e) {
-                        console.info('eeeee', JSON.stringify(e))
+                        console.info('cav', e)
                         addAdEvent(e.slot.getSlotElementId(), eventName)
                     });
                 })
@@ -106,7 +107,7 @@
     }
 
     function initViz(data) {
-        var epoch = performance.timeOrigin
+        var epoch = timeOrigin
         function withDigits(number, digits) {
             if ((number + '').length === digits) return number
             if ((number + '').length + 1 === digits) return `0${number}`
@@ -129,8 +130,21 @@ border: solid 1px black;
 `
         document.body.appendChild(div)
 
-          chart = new d3KitTimeline('#perf-timeline', {
+        function getDomain() {
+            var start = new Date(timeOrigin)
+            start.setMilliseconds(0)
+
+            var end = new Date(timeOrigin + max)
+            end.setMilliseconds(0)
+            end.setSeconds(end.getSeconds() + 1)
+
+            console.info('[start, end]', [start, end])
+            return [start, end]
+        }
+
+        chart = new d3KitTimeline('#perf-timeline', {
             direction: 'up',
+            domain: getDomain(),
             initialWidth: window.innerWidth - 20,
             textFn: function (d) {
               return `${d.name} (${Math.ceil(d.time - epoch).toLocaleString()} ms.)`
