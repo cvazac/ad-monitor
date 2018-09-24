@@ -12,6 +12,20 @@
     if (window !== top) return;
 
     var chart, timers = {}, adTimers = {}, slotId, max = -1, timeOrigin = performance.timing.navigationStart
+    colors = {
+        'navStart': '#003f5c',
+        'dCL': '#2f4b7c',
+        'load': '#2f4b7c',
+        'fp': '#665191',
+        'fcp': '#665191',
+        'iframe-inserted': '#a05195',
+        'iframe-loaded': '#a05195',
+        'slotRenderEnded': '#d45087',
+        'slotOnload': '#d45087',
+        'UNUSED': '#f95d6a',
+        'UNUSED': '#ff7c43',
+        'UNUSED': '#ffa600',
+    }
 
     initTimers()
     initGptListeners()
@@ -156,6 +170,10 @@ border: solid 1px black;
 
             return [start, end]
         }
+        function timerColor({name}, index) {
+            if (colors[name]) return colors[name]
+            return 'red'
+        }
 
         chart = new d3KitTimeline('#perf-timeline', {
             direction: 'up',
@@ -168,7 +186,11 @@ border: solid 1px black;
               axis.tickFormat(function (date, index) {
                 return `${withDigits(date.getHours(), 2)}:${withDigits(date.getMinutes(), 2)}:${withDigits(date.getSeconds(), 2)}.${withDigits(date.getMilliseconds(), 3)}`
               })
-            }
+            },
+            labelBgColor: 'transparent',
+            dotColor: timerColor,
+            labelTextColor: timerColor,
+            linkColor: timerColor,
           });
 
           chart.data(data).visualize().resizeToFit();
