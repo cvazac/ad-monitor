@@ -50,9 +50,13 @@
                     addTimer('load', entry.loadEventStart)
                 } else if (entryType === 'paint') {
                     addTimer(name === 'first-paint' ? 'fp' : 'fcp', entry.startTime)
+                } else if (entryType === 'resource') {
+                    if (name === 'https://www.googletagservices.com/tag/js/gpt.js') {
+                        addTimer('gpt', entry.responseEnd)
+                    }
                 }
             })
-        }).observe({entryTypes: ['paint', 'navigation']})
+        }).observe({entryTypes: ['paint', 'navigation', 'resource']})
     }
     function addTimer(name, hr) {
         timers[name] = hr;
